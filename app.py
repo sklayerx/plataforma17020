@@ -3,82 +3,112 @@ import datetime
 import random
 
 # Configuración de la página
-st.set_page_config(page_title="Sistema de Gestión ISO/IEC 17020", layout="wide")
+st.set_page_config(page_title="Sistema de Inspección - ISO 17020", layout="wide")
 
-st.title("🛡️ Sistema de Gestión para Organismos de Inspección (ISO/IEC 17020)")
-st.caption("Prototipo de Cumplimiento Normativo - Control de Inspecciones e Imparcialidad")
+st.title("🛡️ Sistema de Gestión de Inspecciones (ISO/IEC 17020)")
+st.caption("Plataforma Digital de Captura de Datos en Campo — Check List General")
 
-# Inicializar una base de datos ficticia en la sesión
-if 'inspecciones' not in st.session_state:
-    st.session_state.inspecciones = []
+# Inicializar base de datos en sesión
+if 'historial_inspecciones' not in st.session_state:
+    st.session_state.historial_inspecciones = []
 
-# --- PANEL LATERAL: Información del Sistema ---
-st.sidebar.header("Control de Versiones y Gestión")
+# --- PANEL LATERAL ---
+st.sidebar.header("⚙️ Control de Operaciones")
 st.sidebar.info("""
-**Código de Procedimiento:** P-INS-01  
-**Versión del Software:** 1.0.0  
-**Estado:** Entorno de Desarrollo (Sandbox)  
+**Procedimiento:** P-INS-01  
+**Formato:** Check List GM  
+**Versión del Formulario:** 2.0  
 """)
 
-# --- SECCIÓN 1: Nueva Inspección (Requisito 7.1 y 4.1 ISO 17020) ---
-st.header("📋 Registro de Nueva Inspección")
+# --- SECCIÓN 1: DATOS DE CABECERA (Trazabilidad Requisito 7.4) ---
+st.header("📋 Datos Generales de la Inspección")
 
-with st.form("formulario_inspeccion"):
+with st.form("formulario_checklist"):
     col1, col2 = st.columns(2)
-    
     with col1:
         inspector = st.text_input("Nombre del Inspector Autorizado:")
-        cliente = st.text_input("Nombre del Cliente / Solicitante:")
-        item_inspeccion = st.selectbox("Ítem a Inspeccionar:", [
-            "Instalación Eléctrica Industrial",
-            "Recipiente a Presión / Caldera",
-            "Vehículo de Carga Pesada",
-            "Estructura Metálica"
-        ])
-    
+        cliente = st.text_input("Cliente / Empresa:")
+        ubicacion = st.text_input("Ubicación / Planta / Instalación:")
     with col2:
-        fecha = st.date_input("Fecha de la Inspección", datetime.date.today())
-        resultado = st.radio("Dictamen Preliminar:", ["Conforme", "No Conforme", "Pendiente de Acción Correctiva"])
+        fecha = st.date_input("Fecha de Evaluación:", datetime.date.today())
+        equipo_id = st.text_input("Identificación del Equipo / Ítem Inspeccionado (ID/Tag):")
+
+    st.markdown("---")
     
-    st.subheader("⚖️ Declaración de Imparcialidad (Requisito 4.1)")
-    conflicto = st.checkbox("Declaro bajo juramento que NO poseo presiones comerciales, financieras o de otra índole, ni relación con el diseño, fabricación o mantenimiento del ítem que puedan comprometer mi juicio técnico.")
+    # --- SECCIÓN 2: DECLARACIÓN JURADA DE IMPARCIALIDAD (Requisito 4.1) ---
+    st.subheader("⚖️ Control de Imparcialidad e Independencia")
+    imparcialidad = st.checkbox("Declaro formalmente que no poseo conflictos de interés comerciales, financieros ni técnicos respecto al ítem evaluado.")
 
-    # Botón de envío del formulario
-    enviado = st.form_submit_button("Firmar y Registrar Inspección")
+    st.markdown("---")
 
-    if enviado:
-        if not inspector or not cliente:
-            st.error("⚠️ Error de Integridad: Todos los campos del personal y cliente son obligatorios.")
-        elif not conflicto:
-            st.error("❌ Bloqueo Normativo: No puede registrar la inspección si no acepta la declaración de imparcialidad.")
+    # --- SECCIÓN 3: EL CHECK LIST DE TU EXCEL/DOCX ---
+    st.header("📊 Evaluación de Requisitos Técnicos")
+    st.info("Seleccione la calificación para cada punto evaluado y agregue observaciones de ser necesario.")
+
+    # Definimos los ítems de tu documento
+    items_evaluacion = [
+        "1. Estado General de Estructuras y Soportes",
+        "2. Condiciones de Seguridad del Entorno de Trabajo",
+        "3. Integridad de Conexiones Fisicoquímicas y Mecánicas",
+        "4. Hermeticidad / Ausencia de Fugas Visibles",
+        "5. Estado de Sistemas de Control / Tableros / Instrumentación",
+        "6. Cumplimiento de Señalización de Seguridad y Rotulado",
+        "7. Orden, Limpieza y Mantenimiento General del Área"
+    ]
+
+    # Diccionario para almacenar las respuestas del inspector
+    respuestas = {}
+    
+    for item in items_evaluacion:
+        st.markdown(f"##### {item}")
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            # Calificación estandarizada para auditorías
+            estado = st.radio(f"Resultado:", ["Cumple", "No Cumple", "No Aplica"], key=f"rad_{item}", horizontal=True)
+        with c2:
+            obs = st.text_input("Observaciones / Hallazgos específicos:", key=f"obs_{item}", placeholder="Escriba aquí los detalles si aplica...")
+        
+        # Guardamos el resultado de esta fila
+        respuestas[item] = {"Resultado": estado, "Observaciones": obs}
+        st.markdown("<br>", unsafe_allow_html=True)
+
+    st.markdown("---")
+    
+    # --- SECCIÓN 4: DICTAMEN FINAL ---
+    st.subheader("🏁 Conclusión de la Inspección")
+    dictamen = st.selectbox("Dictamen Técnico Final:", ["APROBADO", "RECHAZADO", "APROBADO CONDICIONAL"])
+
+    # Botón para procesar y firmar digitalmente el formulario
+    enviar_checklist = st.form_submit_button("🔒 Firmar y Registrar Reporte Técnico")
+
+    if enviar_checklist:
+        if not inspector or not cliente or not equipo_id:
+            st.error("⚠️ Error de Integridad: Los campos de Inspector, Cliente e Identificación del Equipo son obligatorios.")
+        elif not imparcialidad:
+            st.error("❌ Bloqueo ISO 17020: Es obligatorio aceptar la declaración de imparcialidad antes de emitir un juicio técnico.")
         else:
-            # Generación de ID único y trazable (Requisito 7.4 - Informes de Inspección)
-            id_informe = f"INF-{fecha.strftime('%Y%m%d')}-{random.randint(100, 999)}"
+            # Generar código único correlativo
+            codigo_informe = f"REP-{fecha.strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
             
-            # Guardar registro
-            nueva_inspeccion = {
-                "id": id_informe,
-                "inspector": inspector,
-                "cliente": cliente,
-                "item": item_inspeccion,
-                "fecha": str(fecha),
-                "resultado": resultado,
-                "imparcialidad_ok": "Sí" if conflicto else "No"
+            # Estructurar registro final
+            registro = {
+                "Código Reporte": codigo_informe,
+                "Fecha": str(fecha),
+                "Inspector": inspector,
+                "Cliente": cliente,
+                "ID Equipo": equipo_id,
+                "Dictamen Final": dictamen
             }
-            st.session_state.inspecciones.append(nueva_inspeccion)
-            st.success(f"✅ Inspección registrada con éxito. Código de Informe Único: **{id_informe}**")
+            
+            # Guardamos en la base de datos de la sesión
+            st.session_state.historial_inspecciones.append(registro)
+            st.success(f"🎉 ¡Check List procesado con éxito! Código de registro asignado: **{codigo_informe}**")
 
-# Línea divisoria corregida para que Python no tire error
+# --- SECCIÓN 5: HISTORIAL Y REGISTROS INALTERABLES (Requisito 8.4) ---
 st.markdown("---")
+st.header("🗄️ Historial de Reportes Emitidos")
 
-# --- SECCIÓN 2: Control de Registros e Informes (Requisito 7.3 y 8.4) ---
-st.header("🗄️ Historial de Inspecciones (Registro Inalterable en Sesión)")
-
-if st.session_state.inspecciones:
-    # Mostrar los datos en una tabla ordenada
-    st.dataframe(st.session_state.inspecciones, use_container_width=True)
-    
-    # Simulación de auditoría
-    st.info("💡 **Nota del Auditor:** Este registro digital actúa como evidencia objetiva para las auditorías de acreditación. Garantiza que cada informe emitido está vinculado a un inspector calificado y una declaración de imparcialidad.")
+if st.session_state.historial_inspecciones:
+    st.dataframe(st.session_state.historial_inspecciones, use_container_width=True)
 else:
-    st.warning("No hay registros de inspección cargados en el sistema actualmente.")
+    st.warning("No se han registrado reportes en este ciclo de trabajo.")
