@@ -105,4 +105,52 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     
     styles = getSampleStyleSheet()
     cert_title = ParagraphStyle('CertTitle', parent=styles['Heading1'], fontSize=22, leading=26, alignment=1, textColor=colors.HexColor('#1A365D'), spaceAfter=20)
-    cert_body = ParagraphStyle('CertBody', parent=styles['BodyText'], fontSize=12, leading=20, alignment=4, spaceBefore=15
+    cert_body = ParagraphStyle('CertBody', parent=styles['BodyText'], fontSize=12, leading=20, alignment=4, spaceBefore=15)
+    
+    story.append(Spacer(1, 40))
+    story.append(Paragraph("<b>CERTIFICADO DE INSPECCIÓN Y APROBACIÓN</b>", cert_title))
+    story.append(Paragraph(f"<b>Certificado N°:</b> CERT-{id_reporte}", ParagraphStyle('Sub', alignment=1, fontSize=11)))
+    story.append(Spacer(1, 30))
+    
+    texto = f"El <b>Organismo de Inspección Técnica</b>, en cumplimiento estricto con los procedimientos de evaluación y los requisitos de la norma de referencia, certifica que se ha realizado la inspección de seguridad física y operativa sobre el equipo que se detalla a continuación:"
+    story.append(Paragraph(texto, cert_body))
+    story.append(Spacer(1, 20))
+    
+    eq_info = [
+        ["<b>Propietario / Cliente:</b>", datos_cabecera['Cliente']],
+        ["<b>Equipo / Máquina:</b>", "Grúa Móvil"],
+        ["<b>Marca y Modelo:</b>", f"{datos_equipo['Marca']} / {datos_equipo['Modelo']}"],
+        ["<b>Número de Serie:</b>", datos_equipo['Serie']],
+        ["<b>Identificación Interna / Patente:</b>", f"{datos_equipo['Interno']} / {datos_equipo['Patente']}"]
+    ]
+    t_eq = Table(eq_info, colWidths=[200, 270])
+    t_eq.setStyle(TableStyle([('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey), ('PADDING', (0,0), (-1,-1), 8), ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#EDF2F7'))]))
+    story.append(t_eq)
+    
+    story.append(Spacer(1, 25))
+    status_color = "#38A169" if dictamen == "APROBADO" else "#DD6B20"
+    texto_dictamen = f"Luego de concluir los ensayos y listas de verificación de campo, el dictamen conclusivo del organismo es: <font color='{status_color}'><b>{dictamen}</b></font>."
+    story.append(Paragraph(texto_dictamen, cert_body))
+    
+    texto_val = f"<b>Fecha de Emisión:</b> {datos_cabecera['Fecha']}<br/><b>Vigencia recomendada:</b> 1 Año a partir de la fecha de emisión conforme a las directrices de seguridad internacionales."
+    story.append(Paragraph(texto_val, cert_body))
+    
+    story.append(Spacer(1, 60))
+    story.append(Paragraph(f"_______________________________________<br/><b>{inspector}</b><br/>Inspector Técnico Autorizado", ParagraphStyle('Firma', alignment=1, fontSize=11)))
+    
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+with st.form("formulario_checklist_completo"):
+    
+    # === SECCIÓN 1: DATOS DE CABECERA ===
+    st.header("📋 1. Datos Generales de la Inspección")
+    col1, col2 = st.columns(2)
+    with col1:
+        fecha = st.date_input("Fecha de inspección:", datetime.date.today())
+        cliente = st.text_input("Cliente:")
+        ubicacion = st.text_input("Ubicación:")
+    with col2:
+        lugar_inspeccion = st.text_input("Lugar de inspección:")
