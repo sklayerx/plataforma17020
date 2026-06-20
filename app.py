@@ -14,8 +14,7 @@ from reportlab.lib import colors
 st.set_page_config(page_title="ANDES - Inspección de Grúas Móviles", layout="wide")
 
 # URL Directa de la imagen del logo en GitHub
-# TIP NORMATIVO: Recuerda reemplazar 'tu-usuario' por tu usuario real de GitHub si subes tu propio logo.
-URL_LOGO = "https://raw.githubusercontent.com/sklayerx/plataforma17020/main/logo_andes.png"
+URL_LOGO = "https://raw.githubusercontent.com/tu-usuario/plataforma17020/main/logo_andes.png"
 
 st.markdown("""
     <style>
@@ -33,7 +32,7 @@ with col_logo:
     try:
         st.image(URL_LOGO, width=140)
     except:
-        st.markdown("### 🏔️ ANDES") 
+        st.markdown("<h2 style='color:#0D1B2A; margin:0;'>🏔️ ANDES</h2>", unsafe_allow_html=True) 
 with col_titulo:
     st.title("ANDES — Ingeniería y Servicios")
     st.subheader("Sistema de Gestión de Inspecciones Oficiales (ISO/IEC 17020)")
@@ -58,23 +57,28 @@ st.sidebar.info("""
 # --- FUNCIONES PARA GENERACIÓN DE PDF CON LOGOTIPO CORREGIDO ---
 def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    # Margen optimizado de 36 puntos (0.5 pulgadas) para ganar espacio de impresión
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = []
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('AND_Title', parent=styles['Heading1'], fontSize=15, leading=18, textColor=colors.HexColor('#0D1B2A'))
     subtitle_style = ParagraphStyle('AND_SubTitle', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#1A3A5C'), spaceBefore=12, spaceAfter=6)
-    body_style = styles['BodyText']
     
-    # ACCIÓN CORRECTIVA: Descarga del logo a memoria antes de pasarlo a ReportLab
+    # Nuevos estilos específicos para celdas dinámicas de tablas controladas
+    cell_body = ParagraphStyle('CellBody', parent=styles['Normal'], fontSize=8.5, leading=11, textColor=colors.HexColor('#2D3748'))
+    cell_dictamen = ParagraphStyle('CellDict', parent=styles['Normal'], fontSize=9, leading=11, alignment=1, textColor=colors.HexColor('#0D1B2A'))
+    header_cell = ParagraphStyle('HeaderCell', parent=styles['Normal'], fontSize=9, leading=12, alignment=1, textColor=colors.white)
+    
+    # Descarga e Inyección del Logotipo
     try:
         req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             img_data = response.read()
         logo_pdf = Image(io.BytesIO(img_data), width=80, height=50)
-    except Exception as e:
-        # Respaldo si la URL no es válida o no hay conexión externa
-        logo_pdf = Paragraph("<b>🏔️ ANDES</b><br/><font size=7 color='grey'>INGENIERÍA</font>", body_style)
+    except Exception:
+        # Ajuste de marca de respaldo robusto en caso de error de red
+        logo_pdf = Paragraph("<b>ANDES</b><br/><font size=6 color='#1A3A5C'>INGENIERÍA</font>", ParagraphStyle('BackLogo', fontSize=14, leading=15, textColor=colors.HexColor('#0D1B2A')))
 
     header_text = Paragraph("""
         <b>ANDES INGENIERÍA Y SERVICIOS</b><br/>
@@ -82,66 +86,94 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         <font size=10 color='#0D1B2A'>INFORME TÉCNICO DETALLADO DE INSPECCIÓN — GRÚAS MÓVILES</font>
     """, title_style)
     
-    t_header = Table([[logo_pdf, header_text]], colWidths=[100, 420])
+    t_header = Table([[logo_pdf, header_text]], colWidths=[90, 450])
     t_header.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('BOTTOMPADDING', (0,0), (-1,-1), 10)]))
     story.append(t_header)
     story.append(Spacer(1, 5))
     
     # Tabla de metadatos del reporte
     meta_data = [
-        [f"<b>Informe N°:</b> {id_reporte}", f"<b>Fecha:</b> {datos_cabecera['Fecha']}"],
-        [f"<b>Cliente:</b> {datos_cabecera['Cliente']}", f"<b>Lugar:</b> {datos_cabecera['Lugar']}"],
-        [f"<b>Ubicación / Planta:</b> {datos_cabecera['Ubicación']}", ""]
+        [Paragraph(f"<b>Informe N°:</b> {id_reporte}", cell_body), Paragraph(f"<b>Fecha:</b> {datos_cabecera['Fecha']}", cell_body)],
+        [Paragraph(f"<b>Cliente:</b> {datos_cabecera['Cliente']}", cell_body), Paragraph(f"<b>Lugar:</b> {datos_cabecera['Lugar']}", cell_body)],
+        [Paragraph(f"<b>Ubicación / Planta:</b> {datos_cabecera['Ubicación']}", cell_body), ""]
     ]
-    t_meta = Table(meta_data, colWidths=[260, 260])
+    t_meta = Table(meta_data, colWidths=[270, 270])
     t_meta.setStyle(TableStyle([
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#0D1B2A')),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F4F6F9')),
-        ('PADDING', (0,0), (-1,-1), 5)
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('SPAN', (0,2), (1,2))
     ]))
     story.append(t_meta)
     
     # Datos del Equipo
     story.append(Paragraph("1. Identificación y Especificaciones Técnicas del Equipo", subtitle_style))
     equipo_data = [
-        [f"<b>Marca:</b> {datos_equipo['Marca']}", f"<b>Modelo:</b> {datos_equipo['Modelo']}", f"<b>N° Serie:</b> {datos_equipo['Serie']}"],
-        [f"<b>Año Fab.:</b> {datos_equipo['Año']}", f"<b>Interno:</b> {datos_equipo['Interno']}", f"<b>Patente:</b> {datos_equipo['Patente']}"],
-        [f"<b>N° Chasis:</b> {datos_equipo['Chasis']}", f"<b>Capacidad:</b> {datos_tecnicos['Capacidad']}", f"<b>Radio Trab.:</b> {datos_tecnicos['Radio']}"],
-        [f"<b>Tipo Pluma:</b> {datos_tecnicos['Pluma']}", f"<b>Tren Rodante:</b> {datos_tecnicos['Tren']}", ""]
+        [Paragraph(f"<b>Marca:</b> {datos_equipo['Marca']}", cell_body), Paragraph(f"<b>Modelo:</b> {datos_equipo['Modelo']}", cell_body), Paragraph(f"<b>N° Serie:</b> {datos_equipo['Serie']}", cell_body)],
+        [Paragraph(f"<b>Año Fab.:</b> {datos_equipo['Año']}", cell_body), Paragraph(f"<b>Interno:</b> {datos_equipo['Interno']}", cell_body), Paragraph(f"<b>Patente:</b> {datos_equipo['Patente']}", cell_body)],
+        [Paragraph(f"<b>N° Chasis:</b> {datos_equipo['Chasis']}", cell_body), Paragraph(f"<b>Capacidad:</b> {datos_tecnicos['Capacidad']}", cell_body), Paragraph(f"<b>Radio Trab.:</b> {datos_tecnicos['Radio']}", cell_body)],
+        [Paragraph(f"<b>Tipo Pluma:</b> {datos_tecnicos['Pluma']}", cell_body), Paragraph(f"<b>Tren Rodante:</b> {datos_tecnicos['Tren']}", cell_body), ""]
     ]
-    t_eq = Table(equipo_data, colWidths=[173, 173, 174])
-    t_eq.setStyle(TableStyle([('BOX', (0,0), (-1,-1), 1, colors.HexColor('#1A3A5C')), ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#F4F6F9')), ('PADDING', (0,0), (-1,-1), 5)]))
+    t_eq = Table(equipo_data, colWidths=[180, 180, 180])
+    t_eq.setStyle(TableStyle([
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#1A3A5C')), 
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#F4F6F9')), 
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('SPAN', (0,3), (1,3))
+    ]))
     story.append(t_eq)
     
-    # Tabla de Resultados
+    # CORRECCIÓN DE LA TABLA DE CHECKLIST (Cero solapamiento y anchos calibrados)
     story.append(Paragraph("2. Evaluación Técnica y Hallazgos de Campo", subtitle_style))
-    check_data = [["Ítem / Componente Evaluado", "Dictamen", "Observaciones / Hallazgos"]]
+    check_data = [[
+        Paragraph("<b>Ítem / Componente Evaluado</b>", header_cell), 
+        Paragraph("<b>Dictamen</b>", header_cell), 
+        Paragraph("<b>Observaciones / Hallazgos</b>", header_cell)
+    ]]
+    
     for item, resp in respuestas.items():
+        # Sanación de textos y formato limpio
         item_limpio = item.replace("<b>", "").replace("</b>", "")
         partes = item_limpio.split(":", 1)
         titulo_item = f"<b>{partes[0]}</b>"
         if len(partes) > 1:
             titulo_item += f": {partes[1]}"
-        check_data.append([Paragraph(titulo_item, body_style), resp['Resultado'], Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", body_style)])
+            
+        # Inyección obligatoria dentro de componentes Paragraph para forzar la celda dinámica autowrap
+        check_data.append([
+            Paragraph(titulo_item, cell_body), 
+            Paragraph(resp['Resultado'], cell_dictamen), 
+            Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", cell_body)
+        ])
         
-    t_check = Table(check_data, colWidths=[180, 70, 270])
+    # Ancho exacto recalculado para hoja Letter (540 puntos totales de área imprimible)
+    t_check = Table(check_data, colWidths=[210, 70, 260])
     t_check.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,0), 'CENTER'), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('PADDING', (0,0), (-1,-1), 4)
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')),
+        ('ALIGN', (0,0), (-1,0), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), # Alineación superior para evitar cortes feos
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5)
     ]))
     story.append(t_check)
     
-    # Conclusión
+    # Conclusión e Imparcialidad
     story.append(Paragraph("3. Conclusión de la Inspección y Firmas", subtitle_style))
     concl_data = [
-        [f"<b>DICTAMEN TÉCNICO FINAL:</b> {dictamen}"],
-        [f"<b>Inspector Técnico Autorizado:</b> {inspector}"],
-        ["<i>Este documento confidencial es emitido por ANDES Ingeniería y Servicios bajo las directrices de la norma ISO/IEC 17020.</i>"]
+        [Paragraph(f"<b>DICTAMEN TÉCNICO FINAL:</b> {dictamen}", ParagraphStyle('FinalD', parent=cell_body, fontSize=10))],
+        [Paragraph(f"<b>Inspector Técnico Autorizado:</b> {inspector}", ParagraphStyle('FinalI', parent=cell_body, fontSize=9))],
+        [Paragraph("<i>Este documento confidencial es emitido por ANDES Ingeniería y Servicios bajo las directrices de la norma ISO/IEC 17020.</i>", ParagraphStyle('FinalN', parent=cell_body, fontSize=7.5))]
     ]
-    t_concl = Table(concl_data, colWidths=[520])
-    t_concl.setStyle(TableStyle([('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')), ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')), ('PADDING', (0,0), (-1,-1), 6)]))
+    t_concl = Table(concl_data, colWidths=[540])
+    t_concl.setStyle(TableStyle([
+        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')), 
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')), 
+        ('PADDING', (0,0), (-1,-1), 6)
+    ]))
     story.append(t_concl)
     
     doc.build(story)
@@ -157,7 +189,6 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     cert_title = ParagraphStyle('AND_CertTitle', parent=styles['Heading1'], fontSize=22, leading=26, alignment=1, textColor=colors.HexColor('#0D1B2A'), spaceAfter=25)
     cert_body = ParagraphStyle('AND_CertBody', parent=styles['BodyText'], fontSize=11, leading=20, alignment=4, spaceBefore=15)
     
-    # ACCIÓN CORRECTIVA: Descarga del logo en memoria para el certificado
     try:
         req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
@@ -165,7 +196,7 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
         logo_cert = Image(io.BytesIO(img_data), width=100, height=62)
         logo_cert.hAlign = 'CENTER'
         story.append(logo_cert)
-    except:
+    except Exception:
         pass
         
     story.append(Spacer(1, 10))
@@ -358,8 +389,8 @@ if 'current_report' in st.session_state:
     
     rep = st.session_state.current_report
     
-    pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"{rep['id']}", rep['dictamen'], rep['inspector'])
-    pdf_certified = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"{rep['id']}", rep['dictamen'], rep['inspector'])
+    pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
+    pdf_certified = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
