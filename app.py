@@ -12,9 +12,7 @@ from reportlab.lib import colors
 # ==========================================
 st.set_page_config(page_title="ANDES - Inspección de Grúas Móviles", layout="wide")
 
-# URL Directa de la imagen del logo en GitHub (Reemplaza 'tu-usuario' por tu usuario real de GitHub)
-# Si aún no lo subes, el sistema usará una imagen por defecto o el texto estilizado de respaldo.
-URL_LOGO = "https://raw.githubusercontent.com/tu-usuario/plataforma17020/main/logo_andes.png"
+URL_LOGO = "[https://raw.githubusercontent.com/tu-usuario/plataforma17020/main/logo_andes.png](https://raw.githubusercontent.com/sklayerx/plataforma17020/main/logo_andes.png)"
 
 st.markdown("""
     <style>
