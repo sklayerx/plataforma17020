@@ -37,7 +37,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=12, leading=16, textColor=colors.HexColor('#2B6CB0'), spaceBefore=10)
     body_style = styles['BodyText']
     
-    # Encabezado Oficial en el PDF (Aquí sí se requiere el formato HTML <b>)
+    # Encabezado Oficial en el PDF
     story.append(Paragraph(f"<b>ORGANISMO DE INSPECCIÓN OFICIAL - ISO/IEC 17020</b>", title_style))
     story.append(Paragraph(f"INFORME TÉCNICO DE INSPECCIÓN DE SEGURIDAD EN GRÚAS MÓVILES", ParagraphStyle('Sub', parent=title_style, fontSize=11, spaceBefore=4)))
     story.append(Spacer(1, 15))
@@ -69,8 +69,14 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     check_data = [["<b>Ítem / Componente Evaluado</b>", "<b>Dictamen</b>", "<b>Observaciones / Hallazgos</b>"]]
     
     for item, resp in respuestas.items():
-        item_corto = item.split(":", 1)[0]
-        check_data.append([Paragraph(item_corto, body_style), resp['Resultado'], Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades", body_style)])
+        # Aseguramos que en el PDF se agreguen las etiquetas <b> de formato
+        item_limpio = item.replace("<b>", "").replace("</b>", "")
+        partes = item_limpio.split(":", 1)
+        titulo_item = f"<b>{partes[0]}</b>"
+        if len(partes) > 1:
+            titulo_item += f": {partes[1]}"
+            
+        check_data.append([Paragraph(titulo_item, body_style), resp['Resultado'], Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades", body_style)])
         
     t_check = Table(check_data, colWidths=[180, 70, 270])
     t_check.setStyle(TableStyle([
@@ -195,7 +201,7 @@ with st.form("formulario_checklist_completo"):
     st.header("🔍 4. Inspección de Requisitos Técnicos")
     st.info("Seleccione la calificación para cada sub-ítem y registre observaciones en caso de desvíos.")
 
-    # Estructura del checklist limpia de etiquetas HTML
+    # Estructura del checklist 100% libre de etiquetas HTML
     estructura_checklist = {
         "1. Documentación e Información Técnica": [
             "Tablas de carga: Verificar que estén disponibles, sean legibles y correspondan al modelo específico de la grúa.",
@@ -223,7 +229,7 @@ with st.form("formulario_checklist_completo"):
         ],
         "6. Sistemas de Potencia (Hidráulico, Neumático y Eléctrico)": [
             "Fugas de fluidos: Inspeccionar mangueras, tuberías y cilindros en busca de fugas de aceite hidráulico o aire.",
-            "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante y combustible.",
+            "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante and combustible.",
             "Componentes eléctricos: Revisar el estado de cables, conexiones y controles eléctricos en busca de deterioro o acumulación de suciedad."
         ],
         "7. Cabina y Seguridad del Personal": [
@@ -247,7 +253,7 @@ with st.form("formulario_checklist_completo"):
             titulo_item = partes[0]
             descripcion_item = partes[1] if len(partes) > 1 else ""
             
-            # Formato nativo de Markdown puro para la pantalla de Streamlit
+            # Formato de pantalla limpio
             st.markdown(f"**{titulo_item}** — *{descripcion_item.strip()}*")
             c_rad, c_obs = st.columns([1, 2])
             with c_rad:
