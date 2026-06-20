@@ -37,7 +37,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=12, leading=16, textColor=colors.HexColor('#2B6CB0'), spaceBefore=10)
     body_style = styles['BodyText']
     
-    # Encabezado Oficial en el PDF
+    # Encabezado Oficial en el PDF (Aquí sí se requiere el formato HTML <b>)
     story.append(Paragraph(f"<b>ORGANISMO DE INSPECCIÓN OFICIAL - ISO/IEC 17020</b>", title_style))
     story.append(Paragraph(f"INFORME TÉCNICO DE INSPECCIÓN DE SEGURIDAD EN GRÚAS MÓVILES", ParagraphStyle('Sub', parent=title_style, fontSize=11, spaceBefore=4)))
     story.append(Spacer(1, 15))
@@ -195,6 +195,7 @@ with st.form("formulario_checklist_completo"):
     st.header("🔍 4. Inspección de Requisitos Técnicos")
     st.info("Seleccione la calificación para cada sub-ítem y registre observaciones en caso de desvíos.")
 
+    # Estructura del checklist limpia de etiquetas HTML
     estructura_checklist = {
         "1. Documentación e Información Técnica": [
             "Tablas de carga: Verificar que estén disponibles, sean legibles y correspondan al modelo específico de la grúa.",
@@ -246,6 +247,7 @@ with st.form("formulario_checklist_completo"):
             titulo_item = partes[0]
             descripcion_item = partes[1] if len(partes) > 1 else ""
             
+            # Formato nativo de Markdown puro para la pantalla de Streamlit
             st.markdown(f"**{titulo_item}** — *{descripcion_item.strip()}*")
             c_rad, c_obs = st.columns([1, 2])
             with c_rad:
@@ -295,7 +297,7 @@ if 'current_report' in st.session_state:
     rep = st.session_state.current_report
     
     pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
-    pdf_certificado = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
+    pdf_certified = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
@@ -309,7 +311,7 @@ if 'current_report' in st.session_state:
         if rep['dictamen'] == "APROBADO":
             st.download_button(
                 label="📜 Descargar Certificado de Aprobación (PDF)",
-                data=pdf_certificado,
+                data=pdf_certified,
                 file_name=f"Certificado_Aprobacion_GM_{rep['id']}.pdf",
                 mime="application/pdf"
             )
