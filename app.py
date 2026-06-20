@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import random
 import io
+import urllib.request
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -12,7 +13,9 @@ from reportlab.lib import colors
 # ==========================================
 st.set_page_config(page_title="ANDES - Inspección de Grúas Móviles", layout="wide")
 
-URL_LOGO = "[https://raw.githubusercontent.com/tu-usuario/plataforma17020/main/logo_andes.png](https://raw.githubusercontent.com/sklayerx/plataforma17020/main/logo_andes.png)"
+# URL Directa de la imagen del logo en GitHub
+# TIP NORMATIVO: Recuerda reemplazar 'tu-usuario' por tu usuario real de GitHub si subes tu propio logo.
+URL_LOGO = "https://raw.githubusercontent.com/sklayerx/plataforma17020/main/logo_andes.png"
 
 st.markdown("""
     <style>
@@ -27,11 +30,10 @@ st.markdown("""
 # --- ENCABEZADO DE LA PLATAFORMA CON LOGO ---
 col_logo, col_titulo = st.columns([1, 4])
 with col_logo:
-    # Mostramos el logo en la web respetando el tamaño mínimo del manual (120px)
     try:
         st.image(URL_LOGO, width=140)
     except:
-        st.markdown("### 🏔️ ANDES") # Respaldo si la URL no está configurada aún
+        st.markdown("### 🏔️ ANDES") 
 with col_titulo:
     st.title("ANDES — Ingeniería y Servicios")
     st.subheader("Sistema de Gestión de Inspecciones Oficiales (ISO/IEC 17020)")
@@ -53,7 +55,7 @@ st.sidebar.info("""
 **Estado:** Cumplimiento ISO 17020  
 """)
 
-# --- FUNCIONES PARA GENERACIÓN DE PDF CON LOGOTIPO ---
+# --- FUNCIONES PARA GENERACIÓN DE PDF CON LOGOTIPO CORREGIDO ---
 def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
@@ -64,11 +66,15 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     subtitle_style = ParagraphStyle('AND_SubTitle', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#1A3A5C'), spaceBefore=12, spaceAfter=6)
     body_style = styles['BodyText']
     
-    # Encabezado con Tabla para colocar Logo a la izquierda y Texto a la derecha
+    # ACCIÓN CORRECTIVA: Descarga del logo a memoria antes de pasarlo a ReportLab
     try:
-        logo_pdf = Image(URL_LOGO, width=80, height=50) # Escala para impresión formal
-    except:
-        logo_pdf = Paragraph("<b>🏔️ ANDES</b>", body_style)
+        req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            img_data = response.read()
+        logo_pdf = Image(io.BytesIO(img_data), width=80, height=50)
+    except Exception as e:
+        # Respaldo si la URL no es válida o no hay conexión externa
+        logo_pdf = Paragraph("<b>🏔️ ANDES</b><br/><font size=7 color='grey'>INGENIERÍA</font>", body_style)
 
     header_text = Paragraph("""
         <b>ANDES INGENIERÍA Y SERVICIOS</b><br/>
@@ -151,8 +157,12 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     cert_title = ParagraphStyle('AND_CertTitle', parent=styles['Heading1'], fontSize=22, leading=26, alignment=1, textColor=colors.HexColor('#0D1B2A'), spaceAfter=25)
     cert_body = ParagraphStyle('AND_CertBody', parent=styles['BodyText'], fontSize=11, leading=20, alignment=4, spaceBefore=15)
     
+    # ACCIÓN CORRECTIVA: Descarga del logo en memoria para el certificado
     try:
-        logo_cert = Image(URL_LOGO, width=100, height=62)
+        req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            img_data = response.read()
+        logo_cert = Image(io.BytesIO(img_data), width=100, height=62)
         logo_cert.hAlign = 'CENTER'
         story.append(logo_cert)
     except:
@@ -268,7 +278,7 @@ with st.form("formulario_checklist_completo"):
             "Indicadores de ángulo y longitud: Comprobar que los indicadores de ángulo de pluma y longitud (en plumas telescópicas) brinden lecturas precisas.",
             "Limitadores de capacidad: Asegurar que los indicadores de capacidad de carga o momento de carga funcionen según las especificaciones."
         ],
-        "5. Systems de Izaje (Cables y Accesorios)": [
+        "5. Sistemas de Izaje (Cables y Accesorios)": [
             "Cables de acero: Realizar una inspección visual del cable en busca de hilos rotos, cocas (dobleces), desgaste o corrosión.",
             "Enhebrado (Reeving): Verificar que el cable esté correctamente instalado en los tambores y poleas.",
             "Gancho y seguros: Inspeccionar el gancho por deformaciones o grietas y asegurar que el seguro de pestillo funcione adecuadamente.",
