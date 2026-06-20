@@ -3,7 +3,7 @@ import datetime
 import random
 import io
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
@@ -12,44 +12,38 @@ from reportlab.lib import colors
 # ==========================================
 st.set_page_config(page_title="ANDES - Inspección de Grúas Móviles", layout="wide")
 
-# Inyección de estilos CSS para adaptar la web a la paleta de ANDES
+# URL Directa de la imagen del logo en GitHub (Reemplaza 'tu-usuario' por tu usuario real de GitHub)
+# Si aún no lo subes, el sistema usará una imagen por defecto o el texto estilizado de respaldo.
+URL_LOGO = "https://raw.githubusercontent.com/tu-usuario/plataforma17020/main/logo_andes.png"
+
 st.markdown("""
     <style>
-    /* Fondo principal y textos */
-    .stApp {
-        background-color: #F4F6F9;
-    }
-    h1, h2, h3 {
-        color: #0D1B2A !important;
-        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
-    /* Estilo para los contenedores de formularios */
-    div[data-testid="stForm"] {
-        background-color: #FFFFFF;
-        border: 1px solid #1A3A5C;
-        border-radius: 8px;
-        padding: 30px;
-    }
-    /* Panel lateral personalizado */
-    section[data-testid="stSidebar"] {
-        background-color: #0D1B2A;
-    }
-    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p {
-        color: #FFFFFF !important;
-    }
+    .stApp { background-color: #F4F6F9; }
+    h1, h2, h3 { color: #0D1B2A !important; font-family: Arial, sans-serif; }
+    div[data-testid="stForm"] { background-color: #FFFFFF; border: 1px solid #1A3A5C; border-radius: 8px; padding: 30px; }
+    section[data-testid="stSidebar"] { background-color: #0D1B2A; }
+    section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] p { color: #FFFFFF !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# Título Principal adaptado a la Identidad Corporativa
-st.title("🏔️ ANDES — Ingeniería y Servicios")
-st.subheader("Sistema de Gestión de Inspecciones Oficiales (ISO/IEC 17020)")
-st.caption("Plataforma de Captura de Datos en Campo — Módulo: Grúas Móviles (GM)")
+# --- ENCABEZADO DE LA PLATAFORMA CON LOGO ---
+col_logo, col_titulo = st.columns([1, 4])
+with col_logo:
+    # Mostramos el logo en la web respetando el tamaño mínimo del manual (120px)
+    try:
+        st.image(URL_LOGO, width=140)
+    except:
+        st.markdown("### 🏔️ ANDES") # Respaldo si la URL no está configurada aún
+with col_titulo:
+    st.title("ANDES — Ingeniería y Servicios")
+    st.subheader("Sistema de Gestión de Inspecciones Oficiales (ISO/IEC 17020)")
+    st.caption("Plataforma de Captura de Datos en Campo — Módulo: Grúas Móviles (GM)")
 
 # Inicializar base de datos en sesión
 if 'historial_inspecciones' not in st.session_state:
     st.session_state.historial_inspecciones = []
 
-# --- PANEL LATERAL INSTITUCIONAL (ANDES) ---
+# --- PANEL LATERAL INSTITUCIONAL ---
 st.sidebar.markdown("<h2 style='color:#FFFFFF;'>ANDES</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("<p style='color:#F4F6F9; font-size:12px;'>Elevación, precisión y crecimiento</p>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
@@ -61,23 +55,33 @@ st.sidebar.info("""
 **Estado:** Cumplimiento ISO 17020  
 """)
 
-# --- FUNCIONES PARA GENERACIÓN DE PDF PROFESIONAL CON MARCA ANDES ---
+# --- FUNCIONES PARA GENERACIÓN DE PDF CON LOGOTIPO ---
 def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     story = []
     
     styles = getSampleStyleSheet()
-    # Estilos basados en el Manual de Marca ANDES
-    title_style = ParagraphStyle('AND_Title', parent=styles['Heading1'], fontSize=16, leading=20, alignment=1, textColor=colors.HexColor('#0D1B2A'))
-    subtitle_style = ParagraphStyle('AND_SubTitle', parent=styles['Heading2'], fontSize=12, leading=16, textColor=colors.HexColor('#1A3A5C'), spaceBefore=12, spaceAfter=6)
+    title_style = ParagraphStyle('AND_Title', parent=styles['Heading1'], fontSize=15, leading=18, textColor=colors.HexColor('#0D1B2A'))
+    subtitle_style = ParagraphStyle('AND_SubTitle', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#1A3A5C'), spaceBefore=12, spaceAfter=6)
     body_style = styles['BodyText']
     
-    # Encabezado Institucional del PDF (ANDES)
-    story.append(Paragraph(f"<b>ANDES INGENIERÍA Y SERVICIOS</b>", title_style))
-    story.append(Paragraph(f"ORGANISMO DE INSPECCIÓN ACREDITADO - ISO/IEC 17020", ParagraphStyle('Sub', parent=title_style, fontSize=10, spaceBefore=4, textColor=colors.HexColor('#1A3A5C'))))
-    story.append(Paragraph(f"INFORME TÉCNICO DETALLADO DE INSPECCIÓN — GRÚAS MÓVILES", ParagraphStyle('DocName', parent=title_style, fontSize=11, spaceBefore=4, textColor=colors.HexColor('#0D1B2A'))))
-    story.append(Spacer(1, 15))
+    # Encabezado con Tabla para colocar Logo a la izquierda y Texto a la derecha
+    try:
+        logo_pdf = Image(URL_LOGO, width=80, height=50) # Escala para impresión formal
+    except:
+        logo_pdf = Paragraph("<b>🏔️ ANDES</b>", body_style)
+
+    header_text = Paragraph("""
+        <b>ANDES INGENIERÍA Y SERVICIOS</b><br/>
+        <font size=9 color='#1A3A5C'>ORGANISMO DE INSPECCIÓN ACREDITADO - ISO/IEC 17020</font><br/>
+        <font size=10 color='#0D1B2A'>INFORME TÉCNICO DETALLADO DE INSPECCIÓN — GRÚAS MÓVILES</font>
+    """, title_style)
+    
+    t_header = Table([[logo_pdf, header_text]], colWidths=[100, 420])
+    t_header.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('BOTTOMPADDING', (0,0), (-1,-1), 10)]))
+    story.append(t_header)
+    story.append(Spacer(1, 5))
     
     # Tabla de metadatos del reporte
     meta_data = [
@@ -90,11 +94,11 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#0D1B2A')),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F4F6F9')),
-        ('PADDING', (0,0), (-1,-1), 6)
+        ('PADDING', (0,0), (-1,-1), 5)
     ]))
     story.append(t_meta)
     
-    # Datos del Equipo y Técnicos
+    # Datos del Equipo
     story.append(Paragraph("1. Identificación y Especificaciones Técnicas del Equipo", subtitle_style))
     equipo_data = [
         [f"<b>Marca:</b> {datos_equipo['Marca']}", f"<b>Modelo:</b> {datos_equipo['Modelo']}", f"<b>N° Serie:</b> {datos_equipo['Serie']}"],
@@ -103,51 +107,37 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         [f"<b>Tipo Pluma:</b> {datos_tecnicos['Pluma']}", f"<b>Tren Rodante:</b> {datos_tecnicos['Tren']}", ""]
     ]
     t_eq = Table(equipo_data, colWidths=[173, 173, 174])
-    t_eq.setStyle(TableStyle([
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#1A3A5C')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#F4F6F9')),
-        ('PADDING', (0,0), (-1,-1), 5)
-    ]))
+    t_eq.setStyle(TableStyle([('BOX', (0,0), (-1,-1), 1, colors.HexColor('#1A3A5C')), ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#F4F6F9')), ('PADDING', (0,0), (-1,-1), 5)]))
     story.append(t_eq)
     
-    # Tabla de Resultados del Checklist
+    # Tabla de Resultados
     story.append(Paragraph("2. Evaluación Técnica y Hallazgos de Campo", subtitle_style))
     check_data = [["Ítem / Componente Evaluado", "Dictamen", "Observaciones / Hallazgos"]]
-    
     for item, resp in respuestas.items():
         item_limpio = item.replace("<b>", "").replace("</b>", "")
         partes = item_limpio.split(":", 1)
         titulo_item = f"<b>{partes[0]}</b>"
         if len(partes) > 1:
             titulo_item += f": {partes[1]}"
-            
         check_data.append([Paragraph(titulo_item, body_style), resp['Resultado'], Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", body_style)])
         
     t_check = Table(check_data, colWidths=[180, 70, 270])
     t_check.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,0), 'CENTER'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('PADDING', (0,0), (-1,-1), 5)
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,0), 'CENTER'), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'), ('PADDING', (0,0), (-1,-1), 4)
     ]))
     story.append(t_check)
     
-    # Conclusión e Imparcialidad
+    # Conclusión
     story.append(Paragraph("3. Conclusión de la Inspección y Firmas", subtitle_style))
     concl_data = [
         [f"<b>DICTAMEN TÉCNICO FINAL:</b> {dictamen}"],
         [f"<b>Inspector Técnico Autorizado:</b> {inspector}"],
-        ["<i>Este documento confidencial es emitido por ANDES Ingeniería y Servicios bajo las directrices estrictas de la norma ISO/IEC 17020.</i>"]
+        ["<i>Este documento confidencial es emitido por ANDES Ingeniería y Servicios bajo las directrices de la norma ISO/IEC 17020.</i>"]
     ]
     t_concl = Table(concl_data, colWidths=[520])
-    t_concl.setStyle(TableStyle([
-        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')),
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')),
-        ('PADDING', (0,0), (-1,-1), 8)
-    ]))
+    t_concl.setStyle(TableStyle([('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')), ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')), ('PADDING', (0,0), (-1,-1), 6)]))
     story.append(t_concl)
     
     doc.build(story)
@@ -163,12 +153,19 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     cert_title = ParagraphStyle('AND_CertTitle', parent=styles['Heading1'], fontSize=22, leading=26, alignment=1, textColor=colors.HexColor('#0D1B2A'), spaceAfter=25)
     cert_body = ParagraphStyle('AND_CertBody', parent=styles['BodyText'], fontSize=11, leading=20, alignment=4, spaceBefore=15)
     
-    story.append(Spacer(1, 20))
+    try:
+        logo_cert = Image(URL_LOGO, width=100, height=62)
+        logo_cert.hAlign = 'CENTER'
+        story.append(logo_cert)
+    except:
+        pass
+        
+    story.append(Spacer(1, 10))
     story.append(Paragraph("<b>ANDES INGENIERÍA Y SERVICIOS</b>", ParagraphStyle('Brand', alignment=1, fontSize=12, textColor=colors.HexColor('#1A3A5C'))))
     story.append(Spacer(1, 10))
     story.append(Paragraph("<b>CERTIFICADO DE INSPECCIÓN Y APROBACIÓN</b>", cert_title))
     story.append(Paragraph(f"<b>Certificado Correlativo N°:</b> CERT-ANDES-{id_reporte}", ParagraphStyle('Sub', alignment=1, fontSize=11, textColor=colors.HexColor('#1A3A5C'))))
-    story.append(Spacer(1, 25))
+    story.append(Spacer(1, 20))
     
     texto = f"El <b>Organismo de Inspección de ANDES Ingeniería y Servicios</b>, conforme con los esquemas de evaluación normativos correspondientes, certifica que se ha ejecutado el protocolo de inspección de seguridad física y estructural sobre el siguiente ítem:"
     story.append(Paragraph(texto, cert_body))
@@ -183,21 +180,19 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     ]
     t_eq = Table(eq_info, colWidths=[200, 270])
     t_eq.setStyle(TableStyle([
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
-        ('PADDING', (0,0), (-1,-1), 8),
-        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F4F6F9')),
-        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A'))
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')), ('PADDING', (0,0), (-1,-1), 8),
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F4F6F9')), ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A'))
     ]))
     story.append(t_eq)
     
-    story.append(Spacer(1, 25))
+    story.append(Spacer(1, 20))
     texto_dictamen = f"Habiéndose completado satisfactoriamente los ensayos técnicos de campo y listas de control vigentes, el veredicto oficial del organismo para este ítem es: <font color='#38A169'><b>{dictamen}</b></font>."
     story.append(Paragraph(texto_dictamen, cert_body))
     
-    texto_val = f"<b>Fecha de Emisión:</b> {datos_cabecera['Fecha']}<br/><b>Vigencia Técnica Sugerida:</b> 1 Año a partir de la fecha de emisión, condicionada al uso apropiado y mantenimiento conforme a las pautas del fabricante."
+    texto_val = f"<b>Fecha de Emisión:</b> {datos_cabecera['Fecha']}<br/><b>Vigencia Técnica Sugerida:</b> 1 Año a partir de la fecha de emisión."
     story.append(Paragraph(texto_val, cert_body))
     
-    story.append(Spacer(1, 50))
+    story.append(Spacer(1, 40))
     story.append(Paragraph(f"_______________________________________<br/><b>{inspector}</b><br/>Inspector Técnico Autorizado<br/><b>ANDES Ingeniería y Servicios</b>", ParagraphStyle('Firma', alignment=1, fontSize=10, leading=14)))
     
     doc.build(story)
@@ -275,7 +270,7 @@ with st.form("formulario_checklist_completo"):
             "Indicadores de ángulo y longitud: Comprobar que los indicadores de ángulo de pluma y longitud (en plumas telescópicas) brinden lecturas precisas.",
             "Limitadores de capacidad: Asegurar que los indicadores de capacidad de carga o momento de carga funcionen según las especificaciones."
         ],
-        "5. Sistemas de Izaje (Cables y Accesorios)": [
+        "5. Systems de Izaje (Cables y Accesorios)": [
             "Cables de acero: Realizar una inspección visual del cable en busca de hilos rotos, cocas (dobleces), desgaste o corrosión.",
             "Enhebrado (Reeving): Verificar que el cable esté correctamente instalado en los tambores y poleas.",
             "Gancho y seguros: Inspeccionar el gancho por deformaciones o grietas y asegurar que el seguro de pestillo funcione adecuadamente.",
