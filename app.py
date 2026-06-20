@@ -13,7 +13,6 @@ from reportlab.lib import colors
 # ==========================================
 st.set_page_config(page_title="ANDES - Inspección de Grúas Móviles", layout="wide")
 
-# URL Directa de la imagen del logo en GitHub
 URL_LOGO = "https://raw.githubusercontent.com/sklayerx/plataforma17020/main/logo_andes.png"
 
 st.markdown("""
@@ -26,7 +25,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- ENCABEZADO DE LA PLATAFORMA CON LOGO ---
+# --- ENCABEZADO DE LA PLATAFORMA ---
 col_logo, col_titulo = st.columns([1, 4])
 with col_logo:
     try:
@@ -38,11 +37,10 @@ with col_titulo:
     st.subheader("Sistema de Gestión de Inspecciones Oficiales (ISO/IEC 17020)")
     st.caption("Plataforma de Captura de Datos en Campo — Módulo: Grúas Móviles (GM)")
 
-# Inicializar base de datos en sesión
 if 'historial_inspecciones' not in st.session_state:
     st.session_state.historial_inspecciones = []
 
-# --- PANEL LATERAL INSTITUCIONAL ---
+# --- PANEL LATERAL ---
 st.sidebar.markdown("<h2 style='color:#FFFFFF;'>ANDES</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("<p style='color:#F4F6F9; font-size:12px;'>Elevación, precisión y crecimiento</p>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
@@ -54,10 +52,9 @@ st.sidebar.info("""
 **Estado:** Cumplimiento ISO 17020  
 """)
 
-# --- FUNCIONES PARA GENERACIÓN DE PDF CON LOGOTIPO CORREGIDO ---
+# --- ACCIÓN CORRECTIVA: FUNCIONES DE PDF CORREGIDAS CON PARAGRAPH EN CADA CELDA ---
 def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector):
     buffer = io.BytesIO()
-    # Margen optimizado de 36 puntos (0.5 pulgadas) para ganar espacio de impresión
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = []
     
@@ -65,19 +62,16 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     title_style = ParagraphStyle('AND_Title', parent=styles['Heading1'], fontSize=15, leading=18, textColor=colors.HexColor('#0D1B2A'))
     subtitle_style = ParagraphStyle('AND_SubTitle', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#1A3A5C'), spaceBefore=12, spaceAfter=6)
     
-    # Nuevos estilos específicos para celdas dinámicas de tablas controladas
-    cell_body = ParagraphStyle('CellBody', parent=styles['Normal'], fontSize=8.5, leading=11, textColor=colors.HexColor('#2D3748'))
-    cell_dictamen = ParagraphStyle('CellDict', parent=styles['Normal'], fontSize=9, leading=11, alignment=1, textColor=colors.HexColor('#0D1B2A'))
+    cell_body = ParagraphStyle('CellBody', parent=styles['Normal'], fontSize=8.5, leading=12, textColor=colors.HexColor('#2D3748'))
+    cell_dictamen = ParagraphStyle('CellDict', parent=styles['Normal'], fontSize=9, leading=12, alignment=1, textColor=colors.HexColor('#0D1B2A'))
     header_cell = ParagraphStyle('HeaderCell', parent=styles['Normal'], fontSize=9, leading=12, alignment=1, textColor=colors.white)
     
-    # Descarga e Inyección del Logotipo
     try:
         req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
             img_data = response.read()
         logo_pdf = Image(io.BytesIO(img_data), width=80, height=50)
     except Exception:
-        # Ajuste de marca de respaldo robusto en caso de error de red
         logo_pdf = Paragraph("<b>ANDES</b><br/><font size=6 color='#1A3A5C'>INGENIERÍA</font>", ParagraphStyle('BackLogo', fontSize=14, leading=15, textColor=colors.HexColor('#0D1B2A')))
 
     header_text = Paragraph("""
@@ -91,11 +85,11 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     story.append(t_header)
     story.append(Spacer(1, 5))
     
-    # Tabla de metadatos del reporte
+    # ACCIÓN CORRECTIVA 1: Toda la cabecera envuelta en Paragraph individuales para renderizar el HTML
     meta_data = [
         [Paragraph(f"<b>Informe N°:</b> {id_reporte}", cell_body), Paragraph(f"<b>Fecha:</b> {datos_cabecera['Fecha']}", cell_body)],
         [Paragraph(f"<b>Cliente:</b> {datos_cabecera['Cliente']}", cell_body), Paragraph(f"<b>Lugar:</b> {datos_cabecera['Lugar']}", cell_body)],
-        [Paragraph(f"<b>Ubicación / Planta:</b> {datos_cabecera['Ubicación']}", cell_body), ""]
+        [Paragraph(f"<b>Ubicación / Planta:</b> {datos_cabecera['Ubicación']}", cell_body), Paragraph("", cell_body)]
     ]
     t_meta = Table(meta_data, colWidths=[270, 270])
     t_meta.setStyle(TableStyle([
@@ -107,13 +101,13 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]))
     story.append(t_meta)
     
-    # Datos del Equipo
+    # ACCIÓN CORRECTIVA 2: Todos los datos técnicos del equipo envueltos en Paragraph
     story.append(Paragraph("1. Identificación y Especificaciones Técnicas del Equipo", subtitle_style))
     equipo_data = [
         [Paragraph(f"<b>Marca:</b> {datos_equipo['Marca']}", cell_body), Paragraph(f"<b>Modelo:</b> {datos_equipo['Modelo']}", cell_body), Paragraph(f"<b>N° Serie:</b> {datos_equipo['Serie']}", cell_body)],
         [Paragraph(f"<b>Año Fab.:</b> {datos_equipo['Año']}", cell_body), Paragraph(f"<b>Interno:</b> {datos_equipo['Interno']}", cell_body), Paragraph(f"<b>Patente:</b> {datos_equipo['Patente']}", cell_body)],
         [Paragraph(f"<b>N° Chasis:</b> {datos_equipo['Chasis']}", cell_body), Paragraph(f"<b>Capacidad:</b> {datos_tecnicos['Capacidad']}", cell_body), Paragraph(f"<b>Radio Trab.:</b> {datos_tecnicos['Radio']}", cell_body)],
-        [Paragraph(f"<b>Tipo Pluma:</b> {datos_tecnicos['Pluma']}", cell_body), Paragraph(f"<b>Tren Rodante:</b> {datos_tecnicos['Tren']}", cell_body), ""]
+        [Paragraph(f"<b>Tipo Pluma:</b> {datos_tecnicos['Pluma']}", cell_body), Paragraph(f"<b>Tren Rodante:</b> {datos_tecnicos['Tren']}", cell_body), Paragraph("", cell_body)]
     ]
     t_eq = Table(equipo_data, colWidths=[180, 180, 180])
     t_eq.setStyle(TableStyle([
@@ -124,7 +118,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]))
     story.append(t_eq)
     
-    # CORRECCIÓN DE LA TABLA DE CHECKLIST (Cero solapamiento y anchos calibrados)
+    # Tabla de Check-list
     story.append(Paragraph("2. Evaluación Técnica y Hallazgos de Campo", subtitle_style))
     check_data = [[
         Paragraph("<b>Ítem / Componente Evaluado</b>", header_cell), 
@@ -133,27 +127,24 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]]
     
     for item, resp in respuestas.items():
-        # Sanación de textos y formato limpio
         item_limpio = item.replace("<b>", "").replace("</b>", "")
         partes = item_limpio.split(":", 1)
         titulo_item = f"<b>{partes[0]}</b>"
         if len(partes) > 1:
             titulo_item += f": {partes[1]}"
             
-        # Inyección obligatoria dentro de componentes Paragraph para forzar la celda dinámica autowrap
         check_data.append([
             Paragraph(titulo_item, cell_body), 
             Paragraph(resp['Resultado'], cell_dictamen), 
             Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", cell_body)
         ])
         
-    # Ancho exacto recalculado para hoja Letter (540 puntos totales de área imprimible)
     t_check = Table(check_data, colWidths=[210, 70, 260])
     t_check.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')),
         ('ALIGN', (0,0), (-1,0), 'CENTER'),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'), # Alineación superior para evitar cortes feos
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('TOPPADDING', (0,0), (-1,-1), 6),
         ('BOTTOMPADDING', (0,0), (-1,-1), 6),
         ('LEFTPADDING', (0,0), (-1,-1), 5),
@@ -161,7 +152,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]))
     story.append(t_check)
     
-    # Conclusión e Imparcialidad
+    # Conclusión
     story.append(Paragraph("3. Conclusión de la Inspección y Firmas", subtitle_style))
     concl_data = [
         [Paragraph(f"<b>DICTAMEN TÉCNICO FINAL:</b> {dictamen}", ParagraphStyle('FinalD', parent=cell_body, fontSize=10))],
@@ -211,16 +202,17 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     story.append(Spacer(1, 15))
     
     eq_info = [
-        ["<b>Propietario / Cliente:</b>", datos_cabecera['Cliente']],
-        ["<b>Categoría de Equipo:</b>", "Grúa Móvil (Módulo GM)"],
-        ["<b>Marca / Modelo:</b>", f"{datos_equipo['Marca']} / {datos_equipo['Modelo']}"],
-        ["<b>Número de Serie / Chasis:</b>", f"{datos_equipo['Serie']} / {datos_equipo['Chasis']}"],
-        ["<b>Identificación Interna / Dominio:</b>", f"{datos_equipo['Interno']} / {datos_equipo['Patente']}"]
+        [Paragraph("<b>Propietario / Cliente:</b>", cert_body), Paragraph(datos_cabecera['Cliente'], cert_body)],
+        [Paragraph("<b>Categoría de Equipo:</b>", cert_body), Paragraph("Grúa Móvil (Módulo GM)", cert_body)],
+        [Paragraph("<b>Marca / Modelo:</b>", cert_body), Paragraph(f"{datos_equipo['Marca']} / {datos_equipo['Modelo']}", cert_body)],
+        [Paragraph("<b>Número de Serie / Chasis:</b>", cert_body), Paragraph(f"{datos_equipo['Serie']} / {datos_equipo['Chasis']}", cert_body)],
+        [Paragraph("<b>Identificación Interna / Dominio:</b>", cert_body), Paragraph(f"{datos_equipo['Interno']} / {datos_equipo['Patente']}", cert_body)]
     ]
     t_eq = Table(eq_info, colWidths=[200, 270])
     t_eq.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')), ('PADDING', (0,0), (-1,-1), 8),
-        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F4F6F9')), ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A'))
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F4F6F9')), ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE')
     ]))
     story.append(t_eq)
     
@@ -238,10 +230,7 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     buffer.seek(0)
     return buffer
 
-
 with st.form("formulario_checklist_completo"):
-    
-    # === SECCIÓN 1: DATOS DE CABECERA ===
     st.header("📋 1. Datos Generales de la Inspección")
     col1, col2 = st.columns(2)
     with col1:
@@ -252,8 +241,6 @@ with st.form("formulario_checklist_completo"):
         lugar_inspeccion = st.text_input("Lugar de inspección:")
 
     st.markdown("---")
-
-    # === SECCIÓN 2: DATOS DEL EQUIPO ===
     st.header("🚜 2. Datos del Equipo")
     col3, col4 = st.columns(2)
     with col3:
@@ -267,8 +254,6 @@ with st.form("formulario_checklist_completo"):
         n_chasis = st.text_input("N° de chasis:")
 
     st.markdown("---")
-
-    # === SECCIÓN 3: DATOS TÉCNICOS ===
     st.header("⚙️ 3. Datos Técnicos")
     col5, col6 = st.columns(2)
     with col5:
@@ -279,14 +264,10 @@ with st.form("formulario_checklist_completo"):
         tren_rodante = st.text_input("Tren rodante:")
 
     st.markdown("---")
-    
-    # === SECCIÓN 4: CONTROL DE IMPARCIALIDAD (REQUISITO 4.1) ===
-    st.subheader("⚖️ Control de Imparcialidad e Independencia")
+    st.subheader("⚖️ Control de Imparcialidad e Independ")
     imparcialidad = st.checkbox("Declaro formalmente bajo juramento que no poseo conflictos de interés comerciales, financieros ni técnicos respecto al ítem evaluado.")
 
     st.markdown("---")
-
-    # === SECCIÓN 5: INSPECCIÓN TÉCNICA EN DETALLE ===
     st.header("🔍 4. Inspección de Requisitos Técnicos")
     st.info("Seleccione la calificación para cada sub-ítem y registre observaciones en caso de desvíos.")
 
@@ -352,8 +333,6 @@ with st.form("formulario_checklist_completo"):
         st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("---")
-    
-    # === SECCIÓN 6: CONCLUSIÓN ===
     st.header("🏁 5. Dictamen Final del Organismo")
     dictamen_final = st.selectbox("Resultado de la Inspección (Dictamen Técnico):", ["APROBADO", "RECHAZADO", "APROBADO CONDICIONAL"])
     inspector_firma = st.text_input("Nombre y Firma Digital del Inspector Técnico Autorizado:")
@@ -381,7 +360,6 @@ with st.form("formulario_checklist_completo"):
             st.session_state.historial_inspecciones.append(registro_historico)
             st.success(f"✅ ¡Inspección guardada bajo registro de ANDES! Documentación disponible abajo.")
 
-# --- SECCIÓN DE DESCARGA DE DOCUMENTOS EMITIDOS ---
 if 'current_report' in st.session_state:
     st.markdown("---")
     st.header("📥 Descarga de Documentación Oficial (ISO 17020)")
@@ -411,10 +389,8 @@ if 'current_report' in st.session_state:
         else:
             st.warning("⚠️ El Certificado no está disponible porque el dictamen final no es 'APROBADO'.")
 
-# === SECCIÓN 7: HISTORIAL DE REGISTROS ===
 st.markdown("---")
 st.header("🗄️ Historial de Informes de Grúas Móviles")
-
 if st.session_state.historial_inspecciones:
     st.dataframe(st.session_state.historial_inspecciones, use_container_width=True)
 else:
