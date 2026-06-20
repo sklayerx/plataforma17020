@@ -42,11 +42,11 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     story.append(Paragraph(f"INFORME TÉCNICO DE INSPECCIÓN DE SEGURIDAD EN GRÚAS MÓVILES", ParagraphStyle('Sub', parent=title_style, fontSize=11, spaceBefore=4)))
     story.append(Spacer(1, 15))
     
-    # Tabla de metadatos del reporte
+    # Tabla de metadatos del reporte (Modificada para remover el campo eliminado)
     meta_data = [
         [f"<b>Informe N°:</b> {id_reporte}", f"<b>Fecha:</b> {datos_cabecera['Fecha']}"],
         [f"<b>Cliente:</b> {datos_cabecera['Cliente']}", f"<b>Lugar:</b> {datos_cabecera['Lugar']}"],
-        [f"<b>Ubicación:</b> {datos_cabecera['Ubicación']}", f"<b>Trazabilidad norm.:</b> {datos_cabecera['Trazabilidad']}"]
+        [f"<b>Ubicación:</b> {datos_cabecera['Ubicación']}", ""]
     ]
     t_meta = Table(meta_data, colWidths=[260, 260])
     t_meta.setStyle(TableStyle([('BOX', (0,0), (-1,-1), 1, colors.grey), ('INNERGRID', (0,0), (-1,-1), 0.5, colors.lightgrey), ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F7FAFC'))]))
@@ -69,7 +69,6 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     check_data = [["<b>Ítem / Componente Evaluado</b>", "<b>Dictamen</b>", "<b>Observaciones / Hallazgos</b>"]]
     
     for item, resp in respuestas.items():
-        # Aseguramos que en el PDF se agreguen las etiquetas <b> de formato
         item_limpio = item.replace("<b>", "").replace("</b>", "")
         partes = item_limpio.split(":", 1)
         titulo_item = f"<b>{partes[0]}</b>"
@@ -151,7 +150,7 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
 
 with st.form("formulario_checklist_completo"):
     
-    # === SECCIÓN 1: DATOS DE CABECERA ===
+    # === SECCIÓN 1: DATOS DE CABECERA (Modificada: Campo Trazabilidad Eliminado) ===
     st.header("📋 1. Datos Generales de la Inspección")
     col1, col2 = st.columns(2)
     with col1:
@@ -160,7 +159,6 @@ with st.form("formulario_checklist_completo"):
         ubicacion = st.text_input("Ubicación:")
     with col2:
         lugar_inspeccion = st.text_input("Lugar de inspección:")
-        trazabilidad = st.text_input("Trazabilidad (Código Interno/Procedimiento):")
 
     st.markdown("---")
 
@@ -201,7 +199,6 @@ with st.form("formulario_checklist_completo"):
     st.header("🔍 4. Inspección de Requisitos Técnicos")
     st.info("Seleccione la calificación para cada sub-ítem y registre observaciones en caso de desvíos.")
 
-    # Estructura del checklist 100% libre de etiquetas HTML
     estructura_checklist = {
         "1. Documentación e Información Técnica": [
             "Tablas de carga: Verificar que estén disponibles, sean legibles y correspondan al modelo específico de la grúa.",
@@ -229,7 +226,7 @@ with st.form("formulario_checklist_completo"):
         ],
         "6. Sistemas de Potencia (Hidráulico, Neumático y Eléctrico)": [
             "Fugas de fluidos: Inspeccionar mangueras, tuberías y cilindros en busca de fugas de aceite hidráulico o aire.",
-            "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante and combustible.",
+            "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante y combustible.",
             "Componentes eléctricos: Revisar el estado de cables, conexiones y controles eléctricos en busca de deterioro o acumulación de suciedad."
         ],
         "7. Cabina y Seguridad del Personal": [
@@ -253,7 +250,6 @@ with st.form("formulario_checklist_completo"):
             titulo_item = partes[0]
             descripcion_item = partes[1] if len(partes) > 1 else ""
             
-            # Formato de pantalla limpio
             st.markdown(f"**{titulo_item}** — *{descripcion_item.strip()}*")
             c_rad, c_obs = st.columns([1, 2])
             with c_rad:
@@ -281,7 +277,8 @@ with st.form("formulario_checklist_completo"):
         else:
             id_reporte = f"{fecha.strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
             
-            cabecera = {"Fecha": str(fecha), "Cliente": cliente, "Ubicación": ubicacion, "Lugar": lugar_inspeccion, "Trazabilidad": trazabilidad}
+            # Cabecera estructurada sin el campo de trazabilidad
+            cabecera = {"Fecha": str(fecha), "Cliente": cliente, "Ubicación": ubicacion, "Lugar": lugar_inspeccion}
             equipo = {"Marca": marca, "Modelo": modelo, "Serie": serie, "Año": anio_fab, "Interno": interno, "Patente": patente, "Chasis": n_chasis}
             tecnicos = {"Capacidad": capacidad_carga, "Radio": radio_trabajo, "Pluma": tipo_pluma, "Tren": tren_rodante}
             
