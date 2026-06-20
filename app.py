@@ -7,6 +7,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 
 # ==========================================
 # CONFIGURACIÓN VISUAL DE LA PLATAFORMA (ANDES)
@@ -52,8 +53,8 @@ st.sidebar.info("""
 **Estado:** Cumplimiento ISO 17020  
 """)
 
-# --- ACCIÓN CORRECTIVA: FUNCIONES DE PDF CORREGIDAS CON PARAGRAPH EN CADA CELDA ---
-def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector):
+# --- FUNCIONES DE PDF OPTIMIZADAS ---
+def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector, lista_fotos):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = []
@@ -85,7 +86,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     story.append(t_header)
     story.append(Spacer(1, 5))
     
-    # ACCIÓN CORRECTIVA 1: Toda la cabecera envuelta en Paragraph individuales para renderizar el HTML
+    # Tabla de metadatos del reporte
     meta_data = [
         [Paragraph(f"<b>Informe N°:</b> {id_reporte}", cell_body), Paragraph(f"<b>Fecha:</b> {datos_cabecera['Fecha']}", cell_body)],
         [Paragraph(f"<b>Cliente:</b> {datos_cabecera['Cliente']}", cell_body), Paragraph(f"<b>Lugar:</b> {datos_cabecera['Lugar']}", cell_body)],
@@ -101,7 +102,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]))
     story.append(t_meta)
     
-    # ACCIÓN CORRECTIVA 2: Todos los datos técnicos del equipo envueltos en Paragraph
+    # Datos del Equipo
     story.append(Paragraph("1. Identificación y Especificaciones Técnicas del Equipo", subtitle_style))
     equipo_data = [
         [Paragraph(f"<b>Marca:</b> {datos_equipo['Marca']}", cell_body), Paragraph(f"<b>Modelo:</b> {datos_equipo['Modelo']}", cell_body), Paragraph(f"<b>N° Serie:</b> {datos_equipo['Serie']}", cell_body)],
@@ -151,7 +152,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         ('RIGHTPADDING', (0,0), (-1,-1), 5)
     ]))
     story.append(t_check)
-    
+
     # Conclusión
     story.append(Paragraph("3. Conclusión de la Inspección y Firmas", subtitle_style))
     concl_data = [
@@ -166,6 +167,52 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         ('PADDING', (0,0), (-1,-1), 6)
     ]))
     story.append(t_concl)
+
+    # NUEVA SECCIÓN: REGISTRO FOTOGRÁFICO EXCLUSIVO DEL INFORME
+    if lista_fotos:
+        story.append(Spacer(1, 15))
+        story.append(Paragraph("4. Registro Fotográfico de Evidencias (Evidencia Objetiva)", subtitle_style))
+        
+        # Procesamos las fotos de a pares (2 por fila) para optimizar el espacio impreso
+        fotos_tabla = []
+        fila_actual = []
+        
+        for foto_archivo in lista_fotos:
+            try:
+                # Convertir archivo cargado de Streamlit a un formato procesable por ReportLab
+                bytes_foto = foto_archivo.read()
+                foto_archivo.seek(0) # Resetear puntero de lectura
+                
+                # Escalado automático proporcional de la imagen (Ancho fijo de 240 puntos)
+                img_reader = ImageReader(io.BytesIO(bytes_foto))
+                ancho_orig, alto_orig = img_reader.getSize()
+                alto_calculado = (alto_orig * 240) / ancho_orig
+                
+                dibujo_foto = Image(io.BytesIO(bytes_foto), width=240, height=alto_calculado)
+                
+                # Agregamos la foto y un pequeño epígrafe abajo con el nombre del archivo
+                celda_foto = [dibujo_foto, Spacer(1, 3), Paragraph(f"Evidencia: {foto_archivo.name}", ParagraphStyle('FotoLabel', parent=cell_body, fontSize=7, alignment=1))]
+                fila_actual.append(celda_foto)
+            except Exception:
+                pass
+            
+            if len(fila_actual) == 2:
+                fotos_tabla.append(fila_actual)
+                fila_actual = []
+                
+        if fila_actual: # Si quedó una foto guacha sin par, la agregamos con una celda vacía al lado
+            fila_actual.append("")
+            fotos_tabla.append(fila_actual)
+            
+        if fotos_tabla:
+            t_fotos = Table(fotos_tabla, colWidths=[270, 270])
+            t_fotos.setStyle(TableStyle([
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                ('TOPPADDING', (0,0), (-1,-1), 10),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 10)
+            ]))
+            story.append(t_fotos)
     
     doc.build(story)
     buffer.seek(0)
@@ -264,7 +311,7 @@ with st.form("formulario_checklist_completo"):
         tren_rodante = st.text_input("Tren rodante:")
 
     st.markdown("---")
-    st.subheader("⚖️ Control de Imparcialidad e Independ")
+    st.subheader("⚖️ Control de Imparcialidad e Independencia")
     imparcialidad = st.checkbox("Declaro formalmente bajo juramento que no poseo conflictos de interés comerciales, financieros ni técnicos respecto al ítem evaluado.")
 
     st.markdown("---")
@@ -332,8 +379,17 @@ with st.form("formulario_checklist_completo"):
             respuestas_inspector[sub_item] = {"Resultado": estado, "Observaciones": obs}
         st.markdown("<br>", unsafe_allow_html=True)
 
+    # NUEVO CAMPO MULTIMEDIA EN LA PLATAFORMA (Fuera del bucle del checklist para limpieza)
     st.markdown("---")
-    st.header("🏁 5. Dictamen Final del Organismo")
+    st.header("📸 5. Registro Fotográfico Opcional")
+    fotos_cargadas = st.file_uploader(
+        "Siga las pautas del instructivo de ANDES: Adjunte fotografías nítidas de desvíos críticos o placas identificatorias (Formatos: JPG, PNG).",
+        type=["png", "jpg", "jpeg"],
+        accept_multiple_files=True
+    )
+
+    st.markdown("---")
+    st.header("🏁 6. Dictamen Final del Organismo")
     dictamen_final = st.selectbox("Resultado de la Inspección (Dictamen Técnico):", ["APROBADO", "RECHAZADO", "APROBADO CONDICIONAL"])
     inspector_firma = st.text_input("Nombre y Firma Digital del Inspector Técnico Autorizado:")
 
@@ -351,9 +407,11 @@ with st.form("formulario_checklist_completo"):
             equipo = {"Marca": marca, "Modelo": modelo, "Serie": serie, "Año": anio_fab, "Interno": interno, "Patente": patente, "Chasis": n_chasis}
             tecnicos = {"Capacidad": capacidad_carga, "Radio": radio_trabajo, "Pluma": tipo_pluma, "Tren": tren_rodante}
             
+            # Guardamos la lista de fotos en el estado de sesión actual
             st.session_state.current_report = {
                 "id": id_reporte, "cabecera": cabecera, "equipo": equipo, "tecnicos": tecnicos,
-                "respuestas": respuestas_inspector, "dictamen": dictamen_final, "inspector": inspector_firma
+                "respuestas": respuestas_inspector, "dictamen": dictamen_final, "inspector": inspector_firma,
+                "fotos": fotos_cargadas if fotos_cargadas else []
             }
             
             registro_historico = {"Informe N°": f"INF-GM-{id_reporte}", "Fecha": str(fecha), "Cliente": cliente, "Equipo (Serie)": serie, "Dictamen": dictamen_final, "Inspector": inspector_firma}
@@ -367,13 +425,14 @@ if 'current_report' in st.session_state:
     
     rep = st.session_state.current_report
     
-    pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
+    # Pasamos las fotos al informe técnico, pero el certificado permanece inalterado sin recibirlas
+    pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'], rep['fotos'])
     pdf_certified = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
     
     col_d1, col_d2 = st.columns(2)
     with col_d1:
         st.download_button(
-            label="📄 Descargar Informe Técnico ANDES (PDF)",
+            label="📄 Descargar Informe Técnico ANDES con Fotos (PDF)",
             data=pdf_informe,
             file_name=f"ANDES_Informe_Tecnico_GM_{rep['id']}.pdf",
             mime="application/pdf"
