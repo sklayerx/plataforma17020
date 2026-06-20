@@ -53,7 +53,50 @@ st.sidebar.info("""
 **Estado:** Cumplimiento ISO 17020  
 """)
 
-# --- FUNCIONES DE PDF CORREGIDAS SIN ERRORES DE VARIABLES ---
+# --- ESTRUCTURA MAESTRA DEL CHECKLIST (Compartida globalmente) ---
+estructura_checklist = {
+    "1. Documentación e Información Técnica": [
+        "Tablas de carga: Verificar que estén disponibles, sean legibles y correspondan al modelo específico de la grúa.",
+        "Manuales de operación: Asegurar que las instrucciones del fabricante para la operación y mantenimiento estén en la cabina."
+    ],
+    "2. Componentes Estructurales y Estabilidad": [
+        "Estructura principal: Inspeccionar visualmente la pluma, el chasis y la superestructura en busca de deformaciones, grietas o corrosión significativa.",
+        "Estabilizadores (Outriggers): Revisar que los gatos, vigas y flotadores funcionen correctamente y no presenten daños estructurales."
+    ],
+    "3. Mecanismos de Control y Operación": [
+        "Mandos y pedales: Verificar que todos los mecanismos de control operen con suavidad, no tengan juegos excesivos y regresen a su posición neutral cuando sea necesario.",
+        "Frenos y embragues: Revisar el funcionamiento de los sistemas de frenado de izaje, giro y traslación.",
+        "Instrumentación: Comprobar que todos los indicadores de la planta de fuerza (motor) funcionen correctamente."
+    ],
+    "4. Ayudas Operacionales y Dispositivos de Seguridad": [
+        "Dispositivos anti-two-block: Verificar que el sistema de prevención o advertencia de final de carrera del gancho esté operativo.",
+        "Indicadores de ángulo y longitud: Comprobar que los indicadores de ángulo de pluma y longitud (en plumas telescópicas) brinden lecturas precisas.",
+        "Limitadores de capacidad: Asegurar que los indicadores de capacidad de carga o momento de carga funcionen según las especificaciones."
+    ],
+    "5. Sistemas de Izaje (Cables y Accesorios)": [
+        "Cables de acero: Realizar una inspección visual del cable en busca de hilos rotos, cocas (dobleces), desgaste o corrosión.",
+        "Enhebrado (Reeving): Verificar que el cable esté correctamente instalado en los tambores y poleas.",
+        "Gancho y seguros: Inspeccionar el gancho por deformaciones o grietas y asegurar que el seguro de pestillo funcione adecuadamente.",
+        "Poleas y tambores: Revisar que no presenten grietas o desgaste excesivo en las ranuras."
+    ],
+    "6. Sistemas de Potencia (Hidráulico, Neumático y Eléctrico)": [
+        "Fugas de fluidos: Inspeccionar mangueras, tuberías y cilindros en busca de fugas de aceite hidráulico o aire.",
+        "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante y combustible.",
+        "Componentes eléctricos: Revisar el estado de cables, conexiones y controles eléctricos en busca de deterioro o acumulación de suciedad."
+    ],
+    "7. Cabina y Seguridad del Personal": [
+        "Visibilidad: Asegurar que las ventanas de la cabina estén limpias y sin grietas que obstruyan la visión del operador.",
+        "Acceso seguro: Comprobar el estado de escaleras, pasamanos y superficies antideslizantes.",
+        "Extintor de incendios: Verificar la presencia y estado de carga del extintor en la cabina o área de maquinaria.",
+        "Señalización y etiquetas: Confirmar que todas las etiquetas de advertencia y diagramas de señales manuales sean visibles y legibles."
+    ],
+    "8. Tren de Rodaje (Si aplica)": [
+        "Neumáticos/Orugas: Revisar la presión y condición general de los neumáticos, o la tensión y estado de los componentes de las orugas.",
+        "Sistema de dirección: Verificar el correcto funcionamiento del mecanismo de dirección."
+    ]
+}
+
+# --- FUNCIONES DE GENERACIÓN DE PDF ---
 def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas, id_reporte, dictamen, inspector, lista_fotos):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
@@ -67,6 +110,9 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     cell_dictamen = ParagraphStyle('CellDict', parent=styles['Normal'], fontSize=9, leading=12, alignment=1, textColor=colors.HexColor('#0D1B2A'))
     header_cell = ParagraphStyle('HeaderCell', parent=styles['Normal'], fontSize=9, leading=12, alignment=1, textColor=colors.white)
     
+    # Estilo especial para las filas de categorías divisoras dentro de la tabla
+    cat_cell_style = ParagraphStyle('CatCell', parent=styles['Normal'], fontSize=9, leading=12, textColor=colors.HexColor('#0D1B2A'))
+
     try:
         req = urllib.request.Request(URL_LOGO, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req) as response:
@@ -86,7 +132,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     story.append(t_header)
     story.append(Spacer(1, 5))
     
-    # Tabla de metadatos del reporte
+    # Tabla de metadatos
     meta_data = [
         [Paragraph(f"<b>Informe N°:</b> {id_reporte}", cell_body), Paragraph(f"<b>Fecha:</b> {datos_cabecera['Fecha']}", cell_body)],
         [Paragraph(f"<b>Cliente:</b> {datos_cabecera['Cliente']}", cell_body), Paragraph(f"<b>Lugar:</b> {datos_cabecera['Lugar']}", cell_body)],
@@ -119,7 +165,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]))
     story.append(t_eq)
     
-    # Tabla de Check-list
+    # --- MEJORA: TABLA DE CHECK-LIST ESTRUCTURADA POR CATEGORÍAS COMO EN LA WEB ---
     story.append(Paragraph("2. Evaluación Técnica y Hallazgos de Campo", subtitle_style))
     check_data = [[
         Paragraph("<b>Ítem / Componente Evaluado</b>", header_cell), 
@@ -127,21 +173,36 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         Paragraph("<b>Observaciones / Hallazgos</b>", header_cell)
     ]]
     
-    for item, resp in respuestas.items():
-        item_limpio = item.replace("<b>", "").replace("</b>", "")
-        partes = item_limpio.split(":", 1)
-        titulo_item = f"<b>{partes[0]}</b>"
-        if len(partes) > 1:
-            titulo_item += f": {partes[1]}"
+    # Lista para registrar en qué índices de fila van los títulos de categorías para pintarlos de gris
+    indices_categorias = []
+    
+    fila_cont = 1
+    for categoria, sub_items in estructura_checklist.items():
+        # Insertamos fila divisoria de Categoría (Haciendo SPAN de las 3 columnas)
+        check_data.append([Paragraph(f"<b>📍 {categoria}</b>", cat_cell_style), "", ""])
+        indices_categorias.append(fila_cont)
+        fila_cont += 1
+        
+        for sub_item in sub_items:
+            partes = sub_item.split(":", 1)
+            titulo_item = f"<b>{partes[0]}</b>"
+            if len(partes) > 1:
+                titulo_item += f": {partes[1]}"
             
-        check_data.append([
-            Paragraph(titulo_item, cell_body), 
-            Paragraph(resp['Resultado'], cell_dictamen), 
-            Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", cell_body)
-        ])
+            # Buscamos la respuesta guardada en base al sub_item llave
+            resp = respuestas.get(sub_item, {"Resultado": "N/A", "Observaciones": "Sin registrar"})
+            
+            check_data.append([
+                Paragraph(titulo_item, cell_body), 
+                Paragraph(resp['Resultado'], cell_dictamen), 
+                Paragraph(resp['Observaciones'] if resp['Observaciones'] else "Sin novedades registradas", cell_body)
+            ])
+            fila_cont += 1
         
     t_check = Table(check_data, colWidths=[210, 70, 260])
-    t_check.setStyle(TableStyle([
+    
+    # Estilos base de la tabla
+    estilos_tabla = [
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D1B2A')),
         ('ALIGN', (0,0), (-1,0), 'CENTER'),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#1A3A5C')),
@@ -150,22 +211,29 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
         ('BOTTOMPADDING', (0,0), (-1,-1), 6),
         ('LEFTPADDING', (0,0), (-1,-1), 5),
         ('RIGHTPADDING', (0,0), (-1,-1), 5)
-    ]))
+    ]
+    
+    # Aplicamos el sombreado gris claro y combinamos columnas para cada fila de título de categoría
+    for idx in indices_categorias:
+        estilos_tabla.append(('SPAN', (0, idx), (2, idx)))
+        estilos_tabla.append(('BACKGROUND', (0, idx), (2, idx), colors.HexColor('#EDF2F7')))
+        estilos_tabla.append(('TOPPADDING', (0, idx), (2, idx), 7))
+        estilos_tabla.append(('BOTTOMPADDING', (0, idx), (2, idx), 7))
+        
+    t_check.setStyle(TableStyle(estilos_tabla))
     story.append(t_check)
 
-    # SECCIÓN 3: REGISTRO FOTOGRÁFICO (Corregido el nombre interno a lista_fotos)
+    # 3. Registro Fotográfico
     if lista_fotos:
         story.append(Spacer(1, 15))
         story.append(Paragraph("3. Registro Fotográfico de Evidencias (Evidencia Objetiva)", subtitle_style))
         
         fotos_tabla = []
         fila_actual = []
-        
         for foto_archivo in lista_fotos:
             try:
                 bytes_foto = foto_archivo.read()
                 foto_archivo.seek(0)
-                
                 img_reader = ImageReader(io.BytesIO(bytes_foto))
                 ancho_orig, alto_orig = img_reader.getSize()
                 alto_calculado = (alto_orig * 240) / ancho_orig
@@ -175,26 +243,21 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
                 fila_actual.append(celda_foto)
             except Exception:
                 pass
-            
             if len(fila_actual) == 2:
                 fotos_tabla.append(fila_actual)
                 fila_actual = []
-                
         if fila_actual:
             fila_actual.append("")
             fotos_tabla.append(fila_actual)
-            
         if fotos_tabla:
             t_fotos = Table(fotos_tabla, colWidths=[270, 270])
             t_fotos.setStyle(TableStyle([
-                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-                ('TOPPADDING', (0,0), (-1,-1), 10),
-                ('BOTTOMPADDING', (0,0), (-1,-1), 10)
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'), ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+                ('TOPPADDING', (0,0), (-1,-1), 10), ('BOTTOMPADDING', (0,0), (-1,-1), 10)
             ]))
             story.append(t_fotos)
     
-    # SECCIÓN 4: CONCLUSIÓN Y FIRMAS
+    # 4. Conclusión y Firmas
     story.append(Spacer(1, 15))
     story.append(Paragraph("4. Conclusión de la Inspección y Firmas", subtitle_style))
     concl_data = [
@@ -204,9 +267,7 @@ def generar_pdf_informe(datos_cabecera, datos_equipo, datos_tecnicos, respuestas
     ]
     t_concl = Table(concl_data, colWidths=[540])
     t_concl.setStyle(TableStyle([
-        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')), 
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')), 
-        ('PADDING', (0,0), (-1,-1), 6)
+        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#0D1B2A')), ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F4F6F9')), ('PADDING', (0,0), (-1,-1), 6)
     ]))
     story.append(t_concl)
     
@@ -218,7 +279,6 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
     story = []
-    
     styles = getSampleStyleSheet()
     cert_title = ParagraphStyle('AND_CertTitle', parent=styles['Heading1'], fontSize=22, leading=26, alignment=1, textColor=colors.HexColor('#0D1B2A'), spaceAfter=25)
     cert_body = ParagraphStyle('AND_CertBody', parent=styles['BodyText'], fontSize=11, leading=20, alignment=4, spaceBefore=15)
@@ -273,6 +333,7 @@ def generar_pdf_certificado(datos_cabecera, datos_equipo, id_reporte, dictamen, 
     buffer.seek(0)
     return buffer
 
+# --- FORMULARIO DE INTERFAZ DE USUARIO ---
 with st.form("formulario_checklist_completo"):
     st.header("📋 1. Datos Generales de la Inspección")
     col1, col2 = st.columns(2)
@@ -314,50 +375,9 @@ with st.form("formulario_checklist_completo"):
     st.header("🔍 4. Inspección de Requisitos Técnicos")
     st.info("Seleccione la calificación para cada sub-ítem y registre observaciones en caso de desvíos.")
 
-    estructura_checklist = {
-        "1. Documentación e Información Técnica": [
-            "Tablas de carga: Verificar que estén disponibles, sean legibles y correspondan al modelo específico de la grúa.",
-            "Manuales de operación: Asegurar que las instrucciones del fabricante para la operación y mantenimiento estén en la cabina."
-        ],
-        "2. Componentes Estructurales y Estabilidad": [
-            "Estructura principal: Inspeccionar visualmente la pluma, el chasis y la superestructura en busca de deformaciones, grietas o corrosión significativa.",
-            "Estabilizadores (Outriggers): Revisar que los gatos, vigas y flotadores funcionen correctamente y no presenten daños estructurales."
-        ],
-        "3. Mecanismos de Control y Operación": [
-            "Mandos y pedales: Verificar que todos los mecanismos de control operen con suavidad, no tengan juegos excesivos y regresen a su posición neutral cuando sea necesario.",
-            "Frenos y embragues: Revisar el funcionamiento de los sistemas de frenado de izaje, giro y traslación.",
-            "Instrumentación: Comprobar que todos los indicadores de la planta de fuerza (motor) funcionen correctamente."
-        ],
-        "4. Ayudas Operacionales y Dispositivos de Seguridad": [
-            "Dispositivos anti-two-block: Verificar que el sistema de prevención o advertencia de final de carrera del gancho esté operativo.",
-            "Indicadores de ángulo y longitud: Comprobar que los indicadores de ángulo de pluma y longitud (en plumas telescópicas) brinden lecturas precisas.",
-            "Limitadores de capacidad: Asegurar que los indicadores de capacidad de carga o momento de carga funcionen según las especificaciones."
-        ],
-        "5. Sistemas de Izaje (Cables y Accesorios)": [
-            "Cables de acero: Realizar una inspección visual del cable en busca de hilos rotos, cocas (dobleces), desgaste o corrosión.",
-            "Enhebrado (Reeving): Verificar que el cable esté correctamente instalado en los tambores y poleas.",
-            "Gancho y seguros: Inspeccionar el gancho por deformaciones o grietas y asegurar que el seguro de pestillo funcione adecuadamente.",
-            "Poleas y tambores: Revisar que no presenten grietas o desgaste excesivo en las ranuras."
-        ],
-        "6. Sistemas de Potencia (Hidráulico, Neumático y Eléctrico)": [
-            "Fugas de fluidos: Inspeccionar mangueras, tuberías y cilindros en busca de fugas de aceite hidráulico o aire.",
-            "Niveles de fluidos: Verificar niveles de aceite hidráulico, refrigerante y combustible.",
-            "Componentes eléctricos: Revisar el estado de cables, conexiones y controles eléctricos en busca de deterioro o acumulación de suciedad."
-        ],
-        "7. Cabina y Seguridad del Personal": [
-            "Visibilidad: Asegurar que las ventanas de la cabina estén limpias y sin grietas que obstruyan la visión del operador.",
-            "Acceso seguro: Comprobar el estado de escaleras, pasamanos y superficies antideslizantes.",
-            "Extintor de incendios: Verificar la presencia y estado de carga del extintor en la cabina o área de maquinaria.",
-            "Señalización y etiquetas: Confirmar que todas las etiquetas de advertencia y diagramas de señales manuales sean visibles y legibles."
-        ],
-        "8. Tren de Rodaje (Si aplica)": [
-            "Neumáticos/Orugas: Revisar la presión y condición general de los neumáticos, o la tensión y estado de los componentes de las orugas.",
-            "Sistema de dirección: Verificar el correcto funcionamiento del mecanismo de dirección."
-        ]
-    }
-
     respuestas_inspector = {}
 
+    # Renderizado dinámico de la pantalla usando el diccionario unificado
     for categoria, sub_items in estructura_checklist.items():
         st.markdown(f"### 📍 {categoria}")
         for sub_item in sub_items:
@@ -375,7 +395,6 @@ with st.form("formulario_checklist_completo"):
             respuestas_inspector[sub_item] = {"Resultado": estado, "Observaciones": obs}
         st.markdown("<br>", unsafe_allow_html=True)
 
-    # PLATAFORMA: CAMPO DE FOTOS (Sincronizado)
     st.markdown("---")
     st.header("📸 5. Registro Fotográfico Opcional")
     fotos_cargadas = st.file_uploader(
@@ -403,7 +422,6 @@ with st.form("formulario_checklist_completo"):
             equipo = {"Marca": marca, "Modelo": modelo, "Serie": serie, "Año": anio_fab, "Interno": interno, "Patente": patente, "Chasis": n_chasis}
             tecnicos = {"Capacidad": capacidad_carga, "Radio": radio_trabajo, "Pluma": tipo_pluma, "Tren": tren_rodante}
             
-            # Sincronización del diccionario de sesión con 'fotos'
             st.session_state.current_report = {
                 "id": id_reporte, "cabecera": cabecera, "equipo": equipo, "tecnicos": tecnicos,
                 "respuestas": respuestas_inspector, "dictamen": dictamen_final, "inspector": inspector_firma,
@@ -421,7 +439,6 @@ if 'current_report' in st.session_state:
     
     rep = st.session_state.current_report
     
-    # Inyección limpia del parámetro de fotos directo al generador
     pdf_informe = generar_pdf_informe(rep['cabecera'], rep['equipo'], rep['tecnicos'], rep['respuestas'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'], rep['fotos'])
     pdf_certified = generar_pdf_certificado(rep['cabecera'], rep['equipo'], f"INF-GM-{rep['id']}", rep['dictamen'], rep['inspector'])
     
