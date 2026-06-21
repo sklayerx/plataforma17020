@@ -44,7 +44,7 @@ modulo_seleccionado = st.sidebar.selectbox(
         "Seleccione un equipo...",
         "Grúas Móviles (Módulo GM)",
         "Grilletes (Módulo GR)",
-        "Eslingas Sintéticas (Módulo ES)"
+        "Grúas de Pluma Articulada (Módulo GPA)"
     ]
 )
 
