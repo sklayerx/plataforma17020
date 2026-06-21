@@ -54,15 +54,12 @@ if modulo_seleccionado == "Seleccione un equipo...":
     st.info("👋 **Bienvenido al sistema de captura en campo de ANDES.** Por favor, seleccione un tipo de equipo en el listado del panel izquierdo para desplegar su respectiva plataforma de carga.")
     
 elif modulo_seleccionado == "Grúas Móviles (Módulo GM)":
-    # Importación diferida para mantener limpia la memoria
     from modulos.gruas_moviles import desplegar_modulo_gruas
     desplegar_modulo_gruas(URL_LOGO)
 
-elif modulo_seleccionado == "Grilletes (Módulo GR)":
-    st.markdown("---")
-    st.caption("Plataforma de Captura de Datos en Campo — Módulo: Grilletes (GR)")
-    st.warning("🏗️ El módulo de Grilletes (ASME B30.26) está listo para integrar su lógica específica.")
-    # Aquí llamarías a: from modulos.grilletes import desplegar_modulo_grilletes
+elif modulo_seleccionado == "Grúas de Pluma Articulada (Módulo GPA)":
+    from modulos.pluma_articulada import desplegar_modulo_pluma_articulada
+    desplegar_modulo_pluma_articulada(URL_LOGO)
 
 elif modulo_seleccionado == "Eslingas Sintéticas (Módulo ES)":
     st.markdown("---")
